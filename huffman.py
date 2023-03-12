@@ -2,7 +2,7 @@ from collections import Counter
 from collections import namedtuple
 import pickle
 import heapq as hq
-import os
+import struct
 
 
 class Leaf(namedtuple("Leaf", ["char"])): # Описание листьев древа
@@ -40,52 +40,57 @@ def huffman_encoding(s):  # Фукция по созданию словаря с
 
 
 def decode_writing(): # Функция для декодирования и записи
-    filenameIn = input("Enter name of file you want to decode without '.encoded': ")
-    fpIn = open(filenameIn + ".encoded", "r")
-    fpOut = open(filenameIn, "w")
-    
-    with open(filenameIn + '.pickle', 'rb') as f: # Берём дамп словаря с кодировкой 
+    filenameIn = input("Enter name of file you want to decode: ")
+     
+    with open(filenameIn, 'rb') as f: # Берём дамп словаря с кодировкой и само сообщение
         code_new = pickle.load(f)
+        unpack = f.read()
 
-    message = fpIn.read()
+    code_unpack = ''
 
+    for i in unpack:
+        code_unpack += '{0:08b}'.format(i)
+
+    fileName = filenameIn.replace(".encoded", "")
+    fpOut = open(fileName, 'w')
+    
     simbCode = ""
-    for char in message:  # Цикл идущий по закодированному сообщению
+    for char in code_unpack:  # Цикл идущий по закодированному сообщению
         simbCode += char  
         for enc_char in code_new: # цикл, сверящий набор двоичных символов с элементами словаря кодировки
             if(simbCode == code_new.get(enc_char)):
                 fpOut.write(enc_char)  # сразу записываем в файл
                 simbCode = ""
                 break
-    print("[+] Decoding of " + filenameIn + ".encoded complited!!!") 
-    os.remove(filenameIn + '.pickle') # Удаляем словарь с кодировкой за безнабностью
-    print("Decoder file: " + filenameIn + ".pickle removed")
-    fpIn.close()
+
+    print("[+] Decoding of " + fileName + " complited!!!") 
     fpOut.close()
-    os.remove(filenameIn + '.encoded') # Удалем закодированный файл
-    print("Encoded file: " + filenameIn + ".encoded removed")
 
 def code_writing():
     fileName = input("Enter name of file you want to encode: ")
-    fileNameOut = fileName + ".encoded"
     fpIn = open(fileName, "r")
-    fpOut = open(fileNameOut, "w")
-    
+
     s = fpIn.read() # Текст сообщения
     
     code = huffman_encoding(s) # Здесь лежит словарь с кодами
     
-    encoded_message = "".join(code[char] for char in s) #Закодированное сообщение
+    print(code) 
     
-    with open(fileName + ".pickle", 'wb') as f: # Дампаем словарь с кодами символов
-        pickle.dump(code, f)
+    pack = b''
+    
+    encM = ''.join(code[char] for char in s)
 
-    fpOut.write(encoded_message) # Запись сообщения в файл
-    
-    print("[+] Encoding complete\nCreated file: " + fileNameOut + "\nCreated code file: " + fileName + ".pickle")
+    for i in range(0, len(encM), 8):
+        pack += struct.pack('B', int(encM[i: i + 8], 2))
+
+
+    with open(fileName + ".encoded", 'wb') as f: # Дампаем словарь с кодами символов, затем записываем сообщение
+        pickle.dump(code, f)
+        f.write(pack)
+
+    print("[+] Encoding complete\nCreated file: " + fileName + ".encoded")
 
     fpIn.close()
-    fpOut.close()
 
 
 def main():
